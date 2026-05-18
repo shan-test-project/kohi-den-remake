@@ -1,0 +1,176 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**'
+      - '!**.md'
+      - '!.github/**'
+      - '.github/scripts/**'
+      - '.github/workflows/build_push.yml'
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  CI_CHUNK_SIZE: 288
+
+jobs:
+  prepare:
+    name: Prepare job
+    runs-on: ubuntu-latest
+    outputs:
+      individualMatrix: ${{ steps.generate-matrices.outputs.individualMatrix }}
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get number of modules
+        run: |
+          set -x
+          projects=(src/*/*)
+          echo "NUM_INDIVIDUAL_MODULES=${#projects[@]}" >> "$GITHUB_ENV"
+
+      - id: generate-matrices
+        name: Create output matrices
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const numIndividualModules = process.env.NUM_INDIVIDUAL_MODULES;
+            const chunkSize = process.env.CI_CHUNK_SIZE;
+
+            const numIndividualChunks = 1;
+
+            console.log(`Individual modules: ${numIndividualModules} (${numIndividualChunks} chunks of ${chunkSize})`);
+
+            core.setOutput('individualMatrix', JSON.stringify({ 'chunk': [...Array(numIndividualChunks).keys()] }));
+
+  build_individual:
+    name: Build individual modules
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJSON(needs.prepare.outputs.individualMatrix) }}
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore build cache
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            src/**/build
+            !src/**/build/outputs
+          key: build-cache-${{ github.sha }}-${{ matrix.chunk }}
+          restore-keys: |
+            build-cache-${{ github.sha }}-
+            build-cache-
+
+      - name: Build extensions (debug)
+        env:
+          CI_CHUNK_NUM: ${{ matrix.chunk }}
+        run: chmod +x ./gradlew && ./gradlew -p src assembleDebug
+
+      - name: Store build cache
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            src/**/build
+            !src/**/build/outputs
+          key: build-cache-${{ github.sha }}-${{ matrix.chunk }}
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: "individual-apks-${{ matrix.chunk }}"
+          path: "**/*.apk"
+          retention-days: 1
+
+  publish_repo:
+    name: Publish repo
+    needs:
+      - build_individual
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup rsync
+        run: |
+          sudo apt-get update && sudo apt install rsync -y
+
+      - name: Download APK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ~/apk-artifacts
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create repo artifacts
+        run: |
+          cd main
+          python ./.github/scripts/move-apks.py
+          INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/aniyomiorg/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
+          curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
+          java -jar ./Inspector.jar "repo/apk" "output.json" "tmp"
+          python ./.github/scripts/create-repo.py
+
+      - name: Checkout repo branch
+        uses: actions/checkout@v4
+        with:
+          ref: repo
+          path: repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Create repo branch if missing
+        run: |
+          if [ ! -d "repo/.git" ]; then
+            mkdir -p repo
+            cd repo
+            git init
+            git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git checkout -b repo
+          fi
+
+      - name: Sync repo
+        run: |
+          rsync -a --delete --exclude .git --exclude .gitignore main/repo/ repo
+
+      - name: Deploy repo
+        uses: EndBug/add-and-commit@v9
+        with:
+          message: "Update extensions repo"
+          cwd: "./repo"
+          committer_name: github-actions[bot]
+          committer_email: github-actions[bot]@users.noreply.github.com
+          push: "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git repo:repo --force"
