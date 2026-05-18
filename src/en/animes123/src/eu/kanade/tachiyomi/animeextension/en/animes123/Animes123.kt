@@ -99,9 +99,9 @@ class Animes123 : ConfigurableAnimeSource, AnimeHttpSource() {
         return when {
             query.isNotBlank() ->
                 GET("$baseUrl/filter?keyword=${query.trim()}&page=$page", headers)
-            genreFilter?.state != 0 ->
+            genreFilter != null && genreFilter.state != 0 ->
                 GET("$baseUrl/genre/${GENRE_LIST[genreFilter.state].second}?page=$page", headers)
-            typeFilter?.state != 0 ->
+            typeFilter != null && typeFilter.state != 0 ->
                 GET("$baseUrl/${TYPE_LIST[typeFilter.state].second}?page=$page", headers)
             else ->
                 GET("$baseUrl/all-anime-shows?page=$page", headers)

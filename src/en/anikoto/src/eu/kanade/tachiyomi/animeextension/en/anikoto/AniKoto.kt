@@ -275,13 +275,13 @@ class AniKoto : ConfigurableAnimeSource, AnimeHttpSource() {
     private class TypeFilter : AnimeFilter.Select<String>("Type", TYPE_LIST.map { it.first }.toTypedArray())
     private class StatusFilter : AnimeFilter.Select<String>("Status", STATUS_LIST.map { it.first }.toTypedArray())
 
-    private class GenreFilter : AnimeFilter.Group<AnimeFilter.CheckBox>(
+    private class GenreCheckBox(name: String, val value: String) : AnimeFilter.CheckBox(name)
+
+    private class GenreFilter : AnimeFilter.Group<GenreCheckBox>(
         "Genre",
-        GENRE_LIST.map { AnimeFilter.CheckBox(it.first) },
+        GENRE_LIST.map { GenreCheckBox(it.first, it.second) },
     ) {
-        fun selectedGenres() = state.filter { it.state }.map { cb ->
-            GENRE_LIST.find { it.first == cb.name }?.second ?: cb.name.lowercase()
-        }
+        fun selectedGenres() = state.filter { it.state }.map { it.value }
     }
 
     companion object {
