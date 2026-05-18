@@ -47,11 +47,8 @@ jobs:
           script: |
             const numIndividualModules = process.env.NUM_INDIVIDUAL_MODULES;
             const chunkSize = process.env.CI_CHUNK_SIZE;
-
             const numIndividualChunks = 1;
-
             console.log(`Individual modules: ${numIndividualModules} (${numIndividualChunks} chunks of ${chunkSize})`);
-
             core.setOutput('individualMatrix', JSON.stringify({ 'chunk': [...Array(numIndividualChunks).keys()] }));
 
   build_individual:
@@ -77,7 +74,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Restore build cache
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: |
             src/**/build
@@ -93,7 +90,7 @@ jobs:
         run: chmod +x ./gradlew && ./gradlew -p src assembleDebug
 
       - name: Store build cache
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         with:
           path: |
             src/**/build
@@ -105,7 +102,7 @@ jobs:
         with:
           name: "individual-apks-${{ matrix.chunk }}"
           path: "**/*.apk"
-          retention-days: 1
+          retention-days: 7
 
   publish_repo:
     name: Publish repo
@@ -113,10 +110,6 @@ jobs:
       - build_individual
     runs-on: ubuntu-latest
     steps:
-      - name: Setup rsync
-        run: |
-          sudo apt-get update && sudo apt install rsync -y
-
       - name: Download APK artifacts
         uses: actions/download-artifact@v4
         with:
@@ -135,7 +128,7 @@ jobs:
           path: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create repo artifacts
+      - name: Move APKs and generate repo index
         run: |
           cd main
           python ./.github/scripts/move-apks.py
@@ -144,7 +137,7 @@ jobs:
           java -jar ./Inspector.jar "repo/apk" "output.json" "tmp"
           python ./.github/scripts/create-repo.py
 
-      - name: Checkout repo branch
+      - name: Checkout repo branch (if exists)
         uses: actions/checkout@v4
         with:
           ref: repo
@@ -152,25 +145,77 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
-      - name: Create repo branch if missing
+      - name: Initialize repo branch if missing
         run: |
           if [ ! -d "repo/.git" ]; then
             mkdir -p repo
             cd repo
             git init
-            git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name "github-actions[bot]"
+            git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
             git checkout -b repo
+            git commit --allow-empty -m "Initialize repo branch"
+            git push origin repo
           fi
 
-      - name: Sync repo
+      - name: Sync and deploy repo branch
         run: |
-          rsync -a --delete --exclude .git --exclude .gitignore main/repo/ repo
+          rsync -a --delete --exclude .git --exclude .gitignore main/repo/ repo/
+          cd repo
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update extensions repo"
+            git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" repo:repo --force
+          fi
 
-      - name: Deploy repo
-        uses: EndBug/add-and-commit@v9
+  release:
+    name: Create GitHub Release
+    needs:
+      - build_individual
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK artifacts
+        uses: actions/download-artifact@v4
         with:
-          message: "Update extensions repo"
-          cwd: "./repo"
-          committer_name: github-actions[bot]
-          committer_email: github-actions[bot]@users.noreply.github.com
-          push: "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git repo:repo --force"
+          path: ~/apk-artifacts
+
+      - name: Collect APKs
+        run: |
+          mkdir -p ~/release-apks
+          find ~/apk-artifacts -name "*.apk" -exec cp {} ~/release-apks/ \;
+          echo "APKs to release:"
+          ls ~/release-apks/
+
+      - name: Delete existing latest release (if any)
+        run: |
+          gh release delete latest --yes --repo ${{ github.repository }} 2>/dev/null || true
+          git -C /tmp/dummy init 2>/dev/null || true
+          gh api --method DELETE "repos/${{ github.repository }}/git/refs/tags/latest" 2>/dev/null || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release with APKs
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest Extensions Build"
+          body: |
+            Auto-built extensions from commit ${{ github.sha }}
+
+            ## Extensions included
+            - **HentaiTV** – hentai.tv (NSFW)
+            - **AniKoto** – anikototv.to
+            - **123Animes** – 123animes.ru
+
+            ## How to install
+            1. Download the `.apk` file for the extension you want
+            2. Open the file on your Android device to sideload it
+            3. Or add this repo URL to Aniyomi: `https://raw.githubusercontent.com/${{ github.repository }}/repo/index.min.json`
+          files: ~/release-apks/*.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
+          make_latest: true
