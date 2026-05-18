@@ -137,40 +137,34 @@ jobs:
           java -jar ./Inspector.jar "repo/apk" "output.json" "tmp"
           python ./.github/scripts/create-repo.py
 
-      - name: Checkout repo branch (if exists)
-        uses: actions/checkout@v4
-        with:
-          ref: repo
-          path: repo
-          token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Initialize repo branch if missing
+      - name: Deploy to repo branch
         run: |
-          if [ ! -d "repo/.git" ]; then
-            mkdir -p repo
-            cd repo
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          if git ls-remote --heads "$REPO_URL" repo | grep -q "refs/heads/repo"; then
+            git clone --branch repo --depth 1 "$REPO_URL" repo-deploy
+          else
+            mkdir repo-deploy
+            cd repo-deploy
             git init
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git config user.name "github-actions[bot]"
-            git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+            git remote add origin "$REPO_URL"
             git checkout -b repo
             git commit --allow-empty -m "Initialize repo branch"
             git push origin repo
+            cd ..
           fi
 
-      - name: Sync and deploy repo branch
-        run: |
-          rsync -a --delete --exclude .git --exclude .gitignore main/repo/ repo/
-          cd repo
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
+          rsync -a --delete --exclude .git --exclude .gitignore main/repo/ repo-deploy/
+
+          cd repo-deploy
           git add -A
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
             git commit -m "Update extensions repo"
-            git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" repo:repo --force
+            git push origin repo --force
           fi
 
   release:
