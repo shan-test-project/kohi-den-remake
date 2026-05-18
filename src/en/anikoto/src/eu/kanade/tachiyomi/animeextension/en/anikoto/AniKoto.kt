@@ -25,7 +25,6 @@ import okhttp3.FormBody
 import okhttp3.Headers
 import okhttp3.Request
 import okhttp3.Response
-import org.jsoup.nodes.Element
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -167,7 +166,6 @@ class AniKoto : ConfigurableAnimeSource, AnimeHttpSource() {
 
     override fun videoListParse(response: Response): List<Video> {
         val doc = response.asJsoup()
-        val videoList = mutableListOf<Video>()
 
         // 1. Find server list
         val servers = doc.select("#w-servers li, [class*=server] li, ul[class*=server] li, ul.server li")
