@@ -183,7 +183,9 @@ class HentaiTV : AnimeHttpSource() {
             val ogVideo = doc.selectFirst("meta[property=og:video]")?.attr("content")
             if (!ogVideo.isNullOrBlank()) {
                 listOf(Video(ogVideo, "Default", ogVideo))
-            } else emptyList()
+            } else {
+                emptyList()
+            }
         }
     }
 

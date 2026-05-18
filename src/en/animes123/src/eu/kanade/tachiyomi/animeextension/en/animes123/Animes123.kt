@@ -114,8 +114,11 @@ class Animes123 : ConfigurableAnimeSource, AnimeHttpSource() {
             "div.item, [class*=item], div.mse, [class*=card], " +
                 "div[class*=anime], li[class*=anime], a[href*=/anime/]",
         ).mapNotNull { el ->
-            val link = if (el.tagName() == "a") el
-            else el.selectFirst("a[href*=/anime/]") ?: return@mapNotNull null
+            val link = if (el.tagName() == "a") {
+                el
+            } else {
+                el.selectFirst("a[href*=/anime/]") ?: return@mapNotNull null
+            }
             SAnime.create().apply {
                 title = el.selectFirst("img")?.attr("alt")?.trim()
                     ?: el.selectFirst("h2, h3, [class*=title], [class*=name], .name")?.text()?.trim()
