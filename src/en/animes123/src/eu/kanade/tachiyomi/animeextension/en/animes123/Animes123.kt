@@ -331,27 +331,55 @@ class Animes123 : ConfigurableAnimeSource, AnimeHttpSource() {
         GenreFilter(),
     )
 
-    private class TypeFilter : AnimeFilter.Select<String>("Type", TYPE_LIST.map { it.first }.toTypedArray())
-    private class GenreFilter : AnimeFilter.Select<String>("Genre", GENRE_LIST.map { it.first }.toTypedArray())
+    private class TypeFilter : AnimeFilter.Select<String>(
+        "Type",
+        TYPE_LIST.map { it.first }.toTypedArray(),
+    )
+
+    private class GenreFilter : AnimeFilter.Select<String>(
+        "Genre",
+        GENRE_LIST.map { it.first }.toTypedArray(),
+    )
 
     companion object {
         private val TYPE_LIST = listOf(
-            Pair("All", ""), Pair("Japanese Anime", "japanese-anime"),
-            Pair("Chinese Anime", "chinese-anime"), Pair("Subbed", "subbed-anime"),
+            Pair("All", ""),
+            Pair("Japanese Anime", "japanese-anime"),
+            Pair("Chinese Anime", "chinese-anime"),
+            Pair("Subbed", "subbed-anime"),
             Pair("Dubbed", "dubbed-anime"),
         )
         private val GENRE_LIST = listOf(
-            Pair("All", ""), Pair("Action", "action"), Pair("Adventure", "adventure"),
-            Pair("Comedy", "comedy"), Pair("Drama", "drama"), Pair("Ecchi", "ecchi"),
-            Pair("Fantasy", "fantasy"), Pair("Horror", "horror"), Pair("Isekai", "isekai"),
-            Pair("Mecha", "mecha"), Pair("Mystery", "mystery"), Pair("Romance", "romance"),
-            Pair("School", "school"), Pair("Sci-Fi", "sci-fi"), Pair("Slice of Life", "slice-of-life"),
-            Pair("Sports", "sports"), Pair("Supernatural", "supernatural"), Pair("Thriller", "thriller"),
+            Pair("All", ""),
+            Pair("Action", "action"),
+            Pair("Adventure", "adventure"),
+            Pair("Comedy", "comedy"),
+            Pair("Drama", "drama"),
+            Pair("Ecchi", "ecchi"),
+            Pair("Fantasy", "fantasy"),
+            Pair("Horror", "horror"),
+            Pair("Isekai", "isekai"),
+            Pair("Mecha", "mecha"),
+            Pair("Mystery", "mystery"),
+            Pair("Romance", "romance"),
+            Pair("School", "school"),
+            Pair("Sci-Fi", "sci-fi"),
+            Pair("Slice of Life", "slice-of-life"),
+            Pair("Sports", "sports"),
+            Pair("Supernatural", "supernatural"),
+            Pair("Thriller", "thriller"),
         )
 
         private const val PREF_SERVER_KEY = "pref_server"
         private const val PREF_SERVER_DEFAULT = "StreamWish"
-        private val SERVER_LIST = arrayOf("StreamWish", "StreamTape", "DoodStream", "VidHide", "Mp4Upload", "Filemoon")
+        private val SERVER_LIST = arrayOf(
+            "StreamWish",
+            "StreamTape",
+            "DoodStream",
+            "VidHide",
+            "Mp4Upload",
+            "Filemoon",
+        )
     }
 
     // ============================== Settings ==============================

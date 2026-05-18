@@ -286,23 +286,49 @@ class AniKoto : ConfigurableAnimeSource, AnimeHttpSource() {
 
     companion object {
         private val TYPE_LIST = listOf(
-            Pair("All", ""), Pair("Movie", "movie"), Pair("TV", "tv"), Pair("OVA", "ova"), Pair("ONA", "ona"), Pair("Special", "special"),
+            Pair("All", ""),
+            Pair("Movie", "movie"),
+            Pair("TV", "tv"),
+            Pair("OVA", "ova"),
+            Pair("ONA", "ona"),
+            Pair("Special", "special"),
         )
         private val STATUS_LIST = listOf(
-            Pair("All", ""), Pair("Airing", "airing"), Pair("Completed", "completed"), Pair("Upcoming", "upcoming"),
+            Pair("All", ""),
+            Pair("Airing", "airing"),
+            Pair("Completed", "completed"),
+            Pair("Upcoming", "upcoming"),
         )
         private val GENRE_LIST = listOf(
-            Pair("Action", "action"), Pair("Adventure", "adventure"), Pair("Comedy", "comedy"),
-            Pair("Drama", "drama"), Pair("Fantasy", "fantasy"), Pair("Horror", "horror"),
-            Pair("Isekai", "isekai"), Pair("Mecha", "mecha"), Pair("Music", "music"),
-            Pair("Mystery", "mystery"), Pair("Psychological", "psychological"), Pair("Romance", "romance"),
-            Pair("Sci-Fi", "sci-fi"), Pair("Slice of Life", "slice-of-life"), Pair("Sports", "sports"),
-            Pair("Supernatural", "supernatural"), Pair("Thriller", "thriller"),
+            Pair("Action", "action"),
+            Pair("Adventure", "adventure"),
+            Pair("Comedy", "comedy"),
+            Pair("Drama", "drama"),
+            Pair("Fantasy", "fantasy"),
+            Pair("Horror", "horror"),
+            Pair("Isekai", "isekai"),
+            Pair("Mecha", "mecha"),
+            Pair("Music", "music"),
+            Pair("Mystery", "mystery"),
+            Pair("Psychological", "psychological"),
+            Pair("Romance", "romance"),
+            Pair("Sci-Fi", "sci-fi"),
+            Pair("Slice of Life", "slice-of-life"),
+            Pair("Sports", "sports"),
+            Pair("Supernatural", "supernatural"),
+            Pair("Thriller", "thriller"),
         )
 
         private const val PREF_SERVER_KEY = "pref_server"
         private const val PREF_SERVER_DEFAULT = "StreamWish"
-        private val SERVER_LIST = arrayOf("StreamWish", "StreamTape", "DoodStream", "VidHide", "Mp4Upload", "Filemoon")
+        private val SERVER_LIST = arrayOf(
+            "StreamWish",
+            "StreamTape",
+            "DoodStream",
+            "VidHide",
+            "Mp4Upload",
+            "Filemoon",
+        )
     }
 
     // ============================== Settings ==============================
